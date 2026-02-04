@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from "mongoose";
 const CertificateSchema = new mongoose.Schema({
     student: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     course: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', required: true },
@@ -7,4 +7,4 @@ const CertificateSchema = new mongoose.Schema({
     // downloadUrl: String
 }, { timestamps: true });
 
-module.exports = mongoose.model('Certificate', CertificateSchema);
+export default mongoose.model('Certificate', CertificateSchema);

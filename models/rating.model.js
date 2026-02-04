@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from "mongoose";
 
 const RatingSchema = new mongoose.Schema({
     user: {
@@ -26,4 +26,4 @@ const RatingSchema = new mongoose.Schema({
 // Prevent user from reviewing the same course twice
 RatingSchema.index({ course: 1, user: 1 }, { unique: true });
 
-module.exports = mongoose.model('Rating', RatingSchema);
+export default mongoose.model('Rating', RatingSchema);

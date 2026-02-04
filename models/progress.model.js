@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 const ProgressSchema = new mongoose.Schema({
     student: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     course: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', required: true },
@@ -11,4 +11,4 @@ const ProgressSchema = new mongoose.Schema({
     finishDate: Date
 }, { timestamps: true });
 
-module.exports = mongoose.model('Progress', ProgressSchema);
+export default mongoose.model('Progress', ProgressSchema);

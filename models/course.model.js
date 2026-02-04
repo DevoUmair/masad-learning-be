@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from "mongoose";
 
 const DownloadableResourceSchema = new mongoose.Schema({
     title: { type: String, required: true }, // e.g., "Source Code.zip"
@@ -49,4 +49,4 @@ const CourseSchema = new mongoose.Schema({
     isPublished: { type: Boolean, default: false }
 }, { timestamps: true });
 
-module.exports = mongoose.model('Course', CourseSchema);
+export default mongoose.model('Course', CourseSchema);

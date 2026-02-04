@@ -1,4 +1,5 @@
-const mongoose = require('mongoose');
+// const mongoose = require('mongoose');
+import mongoose from "mongoose";
 
 const SocialSchema = new mongoose.Schema({
     website: String,
@@ -44,4 +45,5 @@ UserSchema.methods.clearSession = function () {
     return this.save();
 };
 
-module.exports = mongoose.model('User', UserSchema);
+// module.exports = mongoose.model('User', UserSchema);
+export default mongoose.model('User', UserSchema);

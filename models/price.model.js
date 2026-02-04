@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from "mongoose";
 
 const PricingSchema = new mongoose.Schema({
     course: {
@@ -31,4 +31,4 @@ const PricingSchema = new mongoose.Schema({
 
 
 
-module.exports = mongoose.model('Pricing', PricingSchema);
+export default mongoose.model('Pricing', PricingSchema);
