@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 
 import connectDB from "./config/db.js";
+import bunnyRoutes from './routes/bunny.route.js';
 
 dotenv.config();
 
@@ -18,6 +19,8 @@ app.use(express.json({ limit: "10mb" }));
 app.use(cookieParser());
 
 app.use("/api/users", userRoutes);
+app.use('/api/bunny', bunnyRoutes);
+
 
 
 app.get("/", (req, res) => res.json({ message: "Server running" }));
