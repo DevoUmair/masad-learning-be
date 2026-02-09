@@ -1,49 +1,48 @@
-// const mongoose = require('mongoose');
 import mongoose from "mongoose";
 
-const SocialSchema = new mongoose.Schema({
-    website: String,
-    twitter: String,
-    linkedin: String,
-    youtube: String
-}, { _id: false });
-
-const UserSchema = new mongoose.Schema({
+/* -------- User Schema -------- */
+const UserSchema = new mongoose.Schema(
+  {
     name: { type: String, required: true },
+
+    firstName: { type: String, required: true },
+    lastName: { type: String, required: true },
+
     email: { type: String, required: true, unique: true },
+    phone: String,
+
     password: { type: String, required: true },
+
     role: {
-        type: String,
-        enum: ['student', 'instructor', 'admin'],
-        default: 'student'
+      type: String,
+      enum: ["student", "instructor", "admin"],
+      default: "student",
+      required: true
     },
 
     instructorProfile: {
-        headline: { type: String }, // e.g., "Senior Python Developer at Google"
-        biography: { type: String }, // Full detailed text about their history
-        socials: SocialSchema,       // Nested links
-
-        // Social Proof (Cached)
-        // You update these periodically based on their course performance
-        totalStudents: { type: Number, default: 0 },
-        averageRating: { type: Number, default: 0 },
-        totalReviews: { type: Number, default: 0 },
-
-        // Verification
-        isVerified: { type: Boolean, default: false } // "Blue Checkmark"
+      totalStudents: { type: Number, default: 0 },
+      averageRating: { type: Number, default: 0 },
+      totalReviews: { type: Number, default: 0 },
+      areaOfExpertise: { type: String, default: null },
+      bunnyCollectionId: { type: String, default: null },
+      instructorRating: { type: Number, default: 0 },
+      totalEarnings: { type: Number, default: 0 },
+      totalPaidOut: { type: Number, default: 0 }
     },
 
-    refreshToken: { type: String },
-    isBlocked: { type: Boolean, default: false },
-    enrolledCourses: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Course' }],
+    refreshToken: String,
+    enrolledCourses: [
+      { type: mongoose.Schema.Types.ObjectId, ref: "Course" }
+    ],
 
-}, { timestamps: true });
+  },
+  { timestamps: true }
+);
 
-// Helper to clear session (Manual logout or force logout)
 UserSchema.methods.clearSession = function () {
-    this.refreshToken = null;
-    return this.save();
+  this.refreshToken = null;
+  return this.save();
 };
 
-// module.exports = mongoose.model('User', UserSchema);
-export default mongoose.model('User', UserSchema);
+export default mongoose.model("User", UserSchema);

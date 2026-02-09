@@ -23,7 +23,6 @@ const RatingSchema = new mongoose.Schema({
     },
 }, { timestamps: true });
 
-// Prevent user from reviewing the same course twice
 RatingSchema.index({ course: 1, user: 1 }, { unique: true });
 
 export default mongoose.model('Rating', RatingSchema);
