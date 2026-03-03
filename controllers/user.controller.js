@@ -1,38 +1,14 @@
 import User from '../models/user.model.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-
-const generateTokens = (userId, role) => {
-    const accessToken = jwt.sign({ userId, role }, process.env.JWT_SECRET, {
-        expiresIn: '15m'
-    });
-    const refreshToken = jwt.sign({ userId, role }, process.env.REFRESH_TOKEN_SECRET, {
-        expiresIn: '7d'
-    });
-    return { accessToken, refreshToken };
-};
-
-const setCookies = (res, accessToken, refreshToken) => {
-    res.cookie('accessToken', accessToken, {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'strict',
-        maxAge: 15 * 60 * 1000 // 15 minutes
-    });
-    res.cookie('refreshToken', refreshToken, {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'strict',
-        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-    });
-};
+import { generateTokens, setRefreshTokenCookie } from '../utils/AuthUtils.js';
 
 export const register = async (req, res) => {
     try {
-        const { name, email, password, role } = req.body;
+        const { name, firstName, lastName, phone, role, instructorProfile, email, password } = req.body;
 
-        if (!name || !email || !password) {
-            return res.status(400).json({ message: "All fields are required" });
+        if (!email || !password || (!name && (!firstName || !lastName))) {
+            return res.status(400).json({ message: "Required fields are missing" });
         }
 
         const existingUser = await User.findOne({ email });
@@ -43,10 +19,14 @@ export const register = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const user = await User.create({
-            name,
+            name: name || `${firstName} ${lastName}`,
+            firstName: firstName || name?.split(' ')[0] || '',
+            lastName: lastName || name?.split(' ').slice(1).join(' ') || '',
+            phone,
             email,
             password: hashedPassword,
-            role: role || 'student'
+            role: role || 'student',
+            instructorProfile: role === 'instructor' ? instructorProfile : undefined
         });
 
         const { accessToken, refreshToken } = generateTokens(user._id, user.role);
@@ -55,10 +35,12 @@ export const register = async (req, res) => {
         user.refreshToken = refreshToken;
         await user.save();
 
-        setCookies(res, accessToken, refreshToken);
+        setRefreshTokenCookie(res, refreshToken);
 
+        // Modified: Send accessToken to the client in the JSON body
         res.status(201).json({
             message: "User registered successfully",
+            accessToken,
             user: {
                 _id: user._id,
                 name: user.name,
@@ -97,10 +79,12 @@ export const login = async (req, res) => {
         user.refreshToken = refreshToken;
         await user.save();
 
-        setCookies(res, accessToken, refreshToken);
+        setRefreshTokenCookie(res, refreshToken);
 
+        // Modified: Send accessToken to the client in the JSON body
         res.status(200).json({
             message: "Login successful",
+            accessToken,
             user: {
                 _id: user._id,
                 name: user.name,
@@ -117,7 +101,6 @@ export const login = async (req, res) => {
 
 export const logout = async (req, res) => {
     try {
-
         const refreshToken = req.cookies.refreshToken;
         if (refreshToken) {
             const user = await User.findOne({ refreshToken });
@@ -127,7 +110,7 @@ export const logout = async (req, res) => {
             }
         }
 
-        res.clearCookie('accessToken');
+        // Modified: Only clear the refreshToken cookie, as accessToken is no longer a cookie
         res.clearCookie('refreshToken');
         res.status(200).json({ message: "Logged out successfully" });
     } catch (error) {
@@ -157,12 +140,42 @@ export const refreshAccessToken = async (req, res) => {
         user.refreshToken = newRefreshToken;
         await user.save();
 
-        setCookies(res, accessToken, newRefreshToken);
+        setRefreshTokenCookie(res, newRefreshToken);
 
-        res.status(200).json({ message: "Token refreshed successfully" });
+        // Modified: Send the new accessToken back so the frontend can update its state
+        res.status(200).json({
+            message: "Token refreshed successfully",
+            accessToken,
+            user: {
+                _id: user._id,
+                name: user.name,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                role: user.role
+            }
+        });
 
     } catch (error) {
         console.error("Refresh Token Error:", error);
         res.status(403).json({ message: "Invalid or expired refresh token" });
+    }
+};
+
+export const getMe = async (req, res) => {
+    try {
+        res.status(200).json({
+            user: {
+                _id: req.user._id,
+                name: req.user.name,
+                firstName: req.user.firstName,
+                lastName: req.user.lastName,
+                email: req.user.email,
+                role: req.user.role
+            }
+        });
+    } catch (error) {
+        console.error("Get Me Error:", error);
+        res.status(500).json({ message: "Internal Server Error" });
     }
 };
