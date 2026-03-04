@@ -135,10 +135,11 @@ export const createCourse = async (req, res) => {
 
 export const getCourses = async (req, res) => {
     try {
-        const courses = await Course.find().populate("instructor").populate("modules").populate("modules.lessons")
+        const courses = await Course.find().populate("instructor", "name email instructorProfile").populate("modules").populate("modules.lessons").populate("modules.lessons.resources").populate("thumbnailImage").populate("category");
         res.status(200).json({ success: true, courses });
     } catch (error) {
         console.error("Error fetching courses:", error);
         res.status(500).json({ success: false, message: "Server error fetching courses" });
     }
 };
+

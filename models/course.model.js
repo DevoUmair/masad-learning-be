@@ -2,10 +2,11 @@ import mongoose from "mongoose";
 
 const LessonSchema = new mongoose.Schema({
   videoTitle: { type: String, required: true },
+  lessonTitle: String,
+  lessonDescription: String,
 
   videoId: {
     type: String,
-    // required: true 
   },
 
   libraryId: {
@@ -38,7 +39,6 @@ const CourseSchema = new mongoose.Schema(
     },
 
     price: { type: Number, default: 0 },
-
     instructor: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -59,13 +59,27 @@ const CourseSchema = new mongoose.Schema(
       default: "All Levels"
     },
 
+    promo: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Promo"
+    },
+
     averageRating: { type: Number, default: 0 },
     totalRatings: { type: Number, default: 0 },
+
 
     courseIncludes: {
       totalVideoHours: { type: Number, default: 0 },
       downloadableResources: { type: Number, default: 0 },
+      fullLifetimeAccess: { type: Boolean, default: true },
+      certificateOfCompletion: { type: Boolean, default: true },
     },
+
+    whatYouWillLearn: {
+      type: [String],
+      default: []
+    },
+
     isApproved: {
       type: Boolean,
       default: false
