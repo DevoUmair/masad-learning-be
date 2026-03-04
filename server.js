@@ -11,6 +11,8 @@ connectDB();
 
 import cookieParser from "cookie-parser";
 import userRoutes from "./routes/user.routes.js";
+import courseRoutes from "./routes/course.route.js";
+import categoryRoutes from "./routes/category.route.js";
 
 const app = express();
 
@@ -20,6 +22,8 @@ app.use(cookieParser());
 
 app.use("/api/users", userRoutes);
 app.use('/api/bunny', bunnyRoutes);
+app.use('/api/courses', courseRoutes);
+app.use('/api/categories', categoryRoutes);
 
 
 

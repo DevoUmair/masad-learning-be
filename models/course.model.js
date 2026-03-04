@@ -5,12 +5,19 @@ const LessonSchema = new mongoose.Schema({
 
   videoId: {
     type: String,
-    required: true
+    // required: true 
   },
 
-  pdfUrl: String, 
+  libraryId: {
+    type: String
+  },
 
-  duration: Number 
+  resources: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Resource"
+  }],
+
+  duration: Number
 });
 
 const ModuleSchema = new mongoose.Schema({
@@ -25,9 +32,12 @@ const CourseSchema = new mongoose.Schema(
     title: { type: String, required: true },
     description: String,
 
-    thumbnailImage: String,
+    thumbnailImage: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Resource"
+    },
 
-    price: { type: Number, required: true },
+    price: { type: Number, default: 0 },
 
     instructor: {
       type: mongoose.Schema.Types.ObjectId,
@@ -56,6 +66,10 @@ const CourseSchema = new mongoose.Schema(
       totalVideoHours: { type: Number, default: 0 },
       downloadableResources: { type: Number, default: 0 },
     },
+    isApproved: {
+      type: Boolean,
+      default: false
+    }
   },
   { timestamps: true }
 );
