@@ -27,7 +27,8 @@ const UserSchema = new mongoose.Schema(
       bunnyCollectionId: { type: String, default: null },
       instructorRating: { type: Number, default: 0 },
       totalEarnings: { type: Number, default: 0 },
-      totalPaidOut: { type: Number, default: 0 }
+      totalPaidOut: { type: Number, default: 0 },
+      pendingPayout: { type: Number, default: 0 }
     },
 
     refreshToken: String,

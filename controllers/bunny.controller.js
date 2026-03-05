@@ -1,5 +1,5 @@
-
 import crypto from "crypto";
+import axiosInstance from "../utils/axios.js";
 
 export const generateSecureBunnyUrl = async (req, res) => {
   try {
@@ -10,11 +10,9 @@ export const generateSecureBunnyUrl = async (req, res) => {
     }
 
     const tokenKey = process.env.BUNNY_TOKEN_KEY;
+    const apiKey = process.env.BUNNY_API_KEY;
 
-    // Set expiration to 5 minutes from now
     const expires = Math.floor(Date.now() / 1000) + 60 * 5;
-
-    // Generate the SHA256 hash
     const token = crypto
       .createHash("sha256")
       .update(tokenKey + videoId + expires)
@@ -22,10 +20,21 @@ export const generateSecureBunnyUrl = async (req, res) => {
 
     const secureUrl = `https://iframe.mediadelivery.net/embed/${libraryId}/${videoId}?token=${token}&expires=${expires}`;
 
+    const response = await axiosInstance.get(
+      `https://video.bunnycdn.com/library/${libraryId}/videos/${videoId}`,
+      {
+        headers: {
+          AccessKey: tokenKey,
+        },
+      }
+    );
+
+    const videoData = response.data;
+
     return res.status(200).json({
       url: secureUrl,
+      video: videoData,
     });
-
   } catch (error) {
     console.error("Error generating secure Bunny URL:", error.message);
     return res.status(500).json({ error: "Internal server error" });
