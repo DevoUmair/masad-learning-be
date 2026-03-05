@@ -38,9 +38,30 @@ export const uploadToBunny = async (filePath, videoTitle) => {
 
         if (!uploadRes.ok) throw new Error("Failed to upload video file to Bunny");
 
+        // 3. Fetch the video details to get the duration
+        // BunnyCDN might take a moment to process the duration, but usually it's available right after upload for the raw file length.
+        // If it's 0, it might need more time or a webhook, but we'll try to fetch it immediately.
+        const getRes = await fetch(`https://video.bunnycdn.com/library/${LIBRARY_ID}/videos/${videoId}`, {
+            method: 'GET',
+            headers: {
+                'AccessKey': API_KEY,
+                'accept': 'application/json'
+            }
+        });
+
+        let durationMinutes = 0;
+        if (getRes.ok) {
+            const videoDetails = await getRes.json();
+            // length is in seconds
+            if (videoDetails.length) {
+                durationMinutes = parseFloat((videoDetails.length / 60).toFixed(2));
+            }
+        }
+
         return {
             videoId,
-            libraryId: LIBRARY_ID
+            libraryId: LIBRARY_ID,
+            duration: durationMinutes
         };
     } catch (error) {
         console.error("Bunny Upload Error:", error);
