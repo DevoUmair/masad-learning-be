@@ -81,9 +81,13 @@ export const createCourse = async (req, res) => {
                         lesson.videoId = bunnyData.videoId;
                         lesson.libraryId = bunnyData.libraryId;
 
-                        // Set the lesson duration from Bunny's response
+                        // Set the lesson duration from Bunny's response, or fallback to frontend
                         if (bunnyData.duration) {
                             lesson.lessonDuration = bunnyData.duration;
+                        } else if (lesson.duration) {
+                            lesson.lessonDuration = Number(lesson.duration) || 0;
+                        } else {
+                            lesson.lessonDuration = 0;
                         }
 
                         delete lesson.localFilePath; // Cleanup temp prop
@@ -292,6 +296,10 @@ export const editCourse = async (req, res) => {
                         lesson.libraryId = bunnyData.libraryId;
                         if (bunnyData.duration) {
                             lesson.lessonDuration = bunnyData.duration;
+                        } else if (lesson.duration) {
+                            lesson.lessonDuration = Number(lesson.duration) || 0;
+                        } else {
+                            lesson.lessonDuration = 0;
                         }
                         delete lesson.localFilePath;
                     }
