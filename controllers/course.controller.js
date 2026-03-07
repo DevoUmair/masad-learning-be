@@ -34,10 +34,7 @@ export const createCourse = async (req, res) => {
             return res.status(400).json({ message: "Please provide all required fields including title, and category." });
         }
 
-        // Ensure Resource model and Cloudinary upload util are imported at top
-        // Parse modules JSON as before...
 
-        // --- CLOUDINARY THUMBNAIL LOGIC ---
         let thumbnailResourceId = null;
         const thumbnailFile = req.files?.find(f => f.fieldname === 'thumbnailImage');
         if (thumbnailFile) {
@@ -54,57 +51,37 @@ export const createCourse = async (req, res) => {
             }
         }
 
-        // --- BUNNY.NET & CLOUDINARY (RESOURCES) UPLOAD LOGIC ---
-        // We iterate through modules and lessons to upload files to Bunny/Cloudinary
+        // --- BUNNY.NET & CLOUDINARY (RESOURCES) UPLOADS ---
+        let totalVideoSeconds = 0;
+        let totalResources = 0;
         if (modules && modules.length > 0) {
             for (let m = 0; m < modules.length; m++) {
                 const module = modules[m];
-                let moduleDuration = 0; // Accumulator for this module
+                let moduleDuration = 0;
 
                 for (let l = 0; l < module.lessons.length; l++) {
                     const lesson = module.lessons[l];
 
-                    // Arrays to store Resource ObjectIds for this lesson
                     lesson.resources = [];
                     lesson.lessonDuration = 0;
 
-                    // 1. VIDEO UPLOAD (BunnyCDN)
-                    const videoFileField = `video_${m}_${l}`;
-                    const videoFile = req.files?.find(f => f.fieldname === videoFileField);
-
-                    if (videoFile) {
-                        lesson.localFilePath = videoFile.path;
-                        console.log(`Uploading ${lesson.videoTitle} to Bunny from ${lesson.localFilePath}...`);
-
-                        const bunnyData = await uploadToBunny(lesson.localFilePath, lesson.videoTitle);
-
-                        lesson.videoId = bunnyData.videoId;
-                        lesson.libraryId = bunnyData.libraryId;
-
-                        // Set the lesson duration from Bunny's response, or fallback to frontend
-                        if (bunnyData.duration) {
-                            lesson.lessonDuration = bunnyData.duration;
-                        } else if (lesson.duration) {
-                            lesson.lessonDuration = Number(lesson.duration) || 0;
-                        } else {
-                            lesson.lessonDuration = 0;
-                        }
-
-                        delete lesson.localFilePath; // Cleanup temp prop
+                    if (lesson.libraryVideo) {
+                        // Use existing or newly uploaded video from library
+                        lesson.videoId = lesson.libraryVideo.bunnyVideoId || lesson.libraryVideo.videoId;
+                        lesson.libraryId = lesson.libraryVideo.bunnyLibraryId || lesson.libraryVideo.libraryId;
+                        lesson.lessonDuration = lesson.libraryVideo.duration || Number(lesson.duration) || 0;
+                    } else if (lesson.videoId) {
+                        // Keep existing video data
+                        lesson.lessonDuration = Number(lesson.lessonDuration) || Number(lesson.duration) || 0;
                     }
 
-                    // 2. RESOURCE UPLOADS (Cloudinary)
-                    // The frontend will send files with fieldname like `resource_${m}_${l}_0`, `resource_${m}_${l}_1`, etc.
-                    // We filter req.files for any fieldname starting with `resource_${m}_${l}_`
                     const resourceFiles = req.files?.filter(f => f.fieldname.startsWith(`resource_${m}_${l}_`)) || [];
 
                     for (let rFile of resourceFiles) {
                         console.log(`Uploading lesson resource ${rFile.originalname} to Cloudinary...`);
                         const uploadResult = await uploadToCloudinary(rFile.path, "lesson_resources");
 
-                        // Extracting the custom resource title from req.body mapping
-                        // The field we look for is `resourceTitle_${m}_${l}_${rIndex}`
-                        // We extract the index from the fieldname `resource_${m}_${l}_${rIndex}`
+
                         const rIndex = rFile.fieldname.split('_').pop();
                         const customTitle = req.body[`resourceTitle_${m}_${l}_${rIndex}`] || rFile.originalname;
 
@@ -121,18 +98,17 @@ export const createCourse = async (req, res) => {
                         }
                     }
 
-                    // Add lesson duration to module duration
+                    totalResources += (lesson.resources?.length || 0);
                     moduleDuration += lesson.lessonDuration || 0;
                 }
 
                 module.moduleDuration = parseFloat(moduleDuration.toFixed(2));
+                totalVideoSeconds += module.moduleDuration;
             }
         }
 
-        // Clean up ALL local files generated by Multer after successful upload to CDNs
         cleanupLocalFiles(req.files);
 
-        // Prepare course data to save in DB
         const courseData = {
             title,
             description: description || "",
@@ -141,8 +117,8 @@ export const createCourse = async (req, res) => {
             category,
             level: level || "All Levels",
             courseIncludes: {
-                totalVideoHours: courseIncludes?.totalVideoHours || 0,
-                downloadableResources: courseIncludes?.downloadableResources || 0,
+                totalVideoHours: parseFloat((totalVideoSeconds / 3600).toFixed(2)), // Auto-calculated from lessons
+                downloadableResources: totalResources, // Auto-calculated
                 fullLifetimeAccess: courseIncludes?.fullLifetimeAccess === 'false' ? false : true,
                 certificateOfCompletion: courseIncludes?.certificateOfCompletion === 'false' ? false : true,
             },
@@ -269,6 +245,8 @@ export const editCourse = async (req, res) => {
         }
 
         // Handle module/lesson file uploads (new videos & resources)
+        let totalVideoSeconds = 0;
+        let totalResources = 0;
         if (modules && modules.length > 0) {
             for (let m = 0; m < modules.length; m++) {
                 const module = modules[m];
@@ -284,24 +262,14 @@ export const editCourse = async (req, res) => {
                     const existingResources = lesson.resources.filter(r => typeof r === 'string' && r.match(/^[0-9a-fA-F]{24}$/));
                     lesson.resources = existingResources;
 
-                    // Video upload for new lessons
-                    const videoFileField = `video_${m}_${l}`;
-                    const videoFile = req.files?.find(f => f.fieldname === videoFileField);
-
-                    if (videoFile) {
-                        lesson.localFilePath = videoFile.path;
-                        console.log(`Uploading ${lesson.videoTitle} to Bunny from ${lesson.localFilePath}...`);
-                        const bunnyData = await uploadToBunny(lesson.localFilePath, lesson.videoTitle);
-                        lesson.videoId = bunnyData.videoId;
-                        lesson.libraryId = bunnyData.libraryId;
-                        if (bunnyData.duration) {
-                            lesson.lessonDuration = bunnyData.duration;
-                        } else if (lesson.duration) {
-                            lesson.lessonDuration = Number(lesson.duration) || 0;
-                        } else {
-                            lesson.lessonDuration = 0;
-                        }
-                        delete lesson.localFilePath;
+                    if (lesson.libraryVideo) {
+                        // Use existing or newly uploaded video from library
+                        lesson.videoId = lesson.libraryVideo.bunnyVideoId || lesson.libraryVideo.videoId;
+                        lesson.libraryId = lesson.libraryVideo.bunnyLibraryId || lesson.libraryVideo.libraryId;
+                        lesson.lessonDuration = lesson.libraryVideo.duration || Number(lesson.duration) || 0;
+                    } else if (lesson.videoId) {
+                        // Keep existing video data
+                        lesson.lessonDuration = Number(lesson.lessonDuration) || Number(lesson.duration) || 0;
                     }
 
                     // Resource uploads
@@ -322,10 +290,12 @@ export const editCourse = async (req, res) => {
                         }
                     }
 
+                    totalResources += (lesson.resources?.length || 0);
                     moduleDuration += lesson.lessonDuration || 0;
                 }
 
                 module.moduleDuration = parseFloat(moduleDuration.toFixed(2));
+                totalVideoSeconds += module.moduleDuration;
             }
         }
 
@@ -338,8 +308,8 @@ export const editCourse = async (req, res) => {
         course.category = category || course.category;
         course.level = level || course.level;
         course.courseIncludes = {
-            totalVideoHours: req.body['courseIncludes[totalVideoHours]'] || course.courseIncludes?.totalVideoHours || 0,
-            downloadableResources: req.body['courseIncludes[downloadableResources]'] || course.courseIncludes?.downloadableResources || 0,
+            totalVideoHours: parseFloat((totalVideoSeconds / 3600).toFixed(2)), // Auto-calculated
+            downloadableResources: totalResources, // Auto-calculated
             fullLifetimeAccess: req.body['courseIncludes[fullLifetimeAccess]'] === 'false' ? false : true,
             certificateOfCompletion: req.body['courseIncludes[certificateOfCompletion]'] === 'false' ? false : true,
         };
