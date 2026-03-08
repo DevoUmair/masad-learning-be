@@ -1,6 +1,7 @@
 import User from "../models/user.model.js";
 import Course from "../models/course.model.js";
 import Progress from "../models/progress.model.js";
+import Certificate from "../models/certificate.model.js";
 
 export const enrollCourse = async (req, res) => {
     try {
@@ -125,6 +126,21 @@ export const updateProgress = async (req, res) => {
             if (progress.completionPercentage === 100 && !progress.isCompleted) {
                 progress.isCompleted = true;
                 progress.finishDate = Date.now();
+
+                // Create Certificate if it doesn't exist
+                const existingCertificate = await Certificate.findOne({
+                    student: req.user._id,
+                    course: courseId
+                });
+
+                if (!existingCertificate) {
+                    const certificate = new Certificate({
+                        student: req.user._id,
+                        course: courseId,
+                        issueDate: Date.now()
+                    });
+                    await certificate.save();
+                }
             }
 
             await progress.save();

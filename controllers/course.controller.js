@@ -1,8 +1,14 @@
 import Course from "../models/course.model.js";
 import Resource from "../models/resourceSchema.model.js";
-import { uploadToBunny } from "../utils/bunny.js";
 import { cleanupLocalFiles } from "../utils/bunny.js";
-import { uploadToCloudinary } from "../utils/cloudinary.js";
+import { uploadToCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
+import axios from "axios";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+const BUNNY_LIBRARY_ID = process.env.BUNNY_LIBRARY_ID;
+const BUNNY_API_KEY = process.env.BUNNY_TOKEN_KEY;
 export const createCourse = async (req, res) => {
     try {
         const {
@@ -109,6 +115,7 @@ export const createCourse = async (req, res) => {
 
         cleanupLocalFiles(req.files);
 
+
         const courseData = {
             title,
             description: description || "",
@@ -117,8 +124,8 @@ export const createCourse = async (req, res) => {
             category,
             level: level || "All Levels",
             courseIncludes: {
-                totalVideoHours: parseFloat((totalVideoSeconds / 3600).toFixed(2)), // Auto-calculated from lessons
-                downloadableResources: totalResources, // Auto-calculated
+                totalVideoHours: courseIncludes.totalVideoHours ? courseIncludes.totalVideoHours : parseFloat((totalVideoSeconds / 3600).toFixed(2)), // Auto-calculated from lessons
+                downloadableResources: courseIncludes.downloadableResources ? courseIncludes.downloadableResources : totalResources, // Auto-calculated
                 fullLifetimeAccess: courseIncludes?.fullLifetimeAccess === 'false' ? false : true,
                 certificateOfCompletion: courseIncludes?.certificateOfCompletion === 'false' ? false : true,
             },
@@ -207,6 +214,7 @@ export const editCourse = async (req, res) => {
     try {
         const { id } = req.params;
         const course = await Course.findById(id);
+        console.log("======== FULL REQ.BODY ========", req.body);
         if (!course) {
             return res.status(404).json({ success: false, message: "Course not found" });
         }
@@ -301,6 +309,7 @@ export const editCourse = async (req, res) => {
 
         cleanupLocalFiles(req.files);
 
+        const { courseIncludes } = req.body;
         // Update course fields
         course.title = title || course.title;
         course.description = description || course.description;
@@ -308,10 +317,17 @@ export const editCourse = async (req, res) => {
         course.category = category || course.category;
         course.level = level || course.level;
         course.courseIncludes = {
-            totalVideoHours: parseFloat((totalVideoSeconds / 3600).toFixed(2)), // Auto-calculated
-            downloadableResources: totalResources, // Auto-calculated
-            fullLifetimeAccess: req.body['courseIncludes[fullLifetimeAccess]'] === 'false' ? false : true,
-            certificateOfCompletion: req.body['courseIncludes[certificateOfCompletion]'] === 'false' ? false : true,
+            totalVideoHours: courseIncludes?.totalVideoHours !== undefined
+                ? parseFloat(courseIncludes.totalVideoHours)
+                : parseFloat((totalVideoSeconds / 3600).toFixed(2)),
+
+            downloadableResources: courseIncludes?.downloadableResources !== undefined
+                ? parseInt(courseIncludes.downloadableResources, 10)
+                : totalResources,
+
+            // Convert the string 'false' to a boolean false, default to true otherwise
+            fullLifetimeAccess: String(courseIncludes?.fullLifetimeAccess) === 'false' ? false : true,
+            certificateOfCompletion: String(courseIncludes?.certificateOfCompletion) === 'false' ? false : true,
         };
         course.whatYouWillLearn = whatYouWillLearn;
         course.modules = modules || course.modules;
@@ -331,3 +347,88 @@ export const editCourse = async (req, res) => {
     }
 };
 
+
+export const deleteCourse = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const course = await Course.findById(id)
+            .populate("thumbnailImage")
+            .populate("modules.lessons.resources");
+
+        if (!course) {
+            return res.status(404).json({ success: false, message: "Course not found" });
+        }
+
+        // 1. Collect all resources to delete from Cloudinary
+        const cloudinaryPublicIds = [];
+        const resourceDocIds = [];
+
+        // Thumbnail
+        if (course.thumbnailImage && course.thumbnailImage.publicId) {
+            cloudinaryPublicIds.push({ id: course.thumbnailImage.publicId, type: "image" });
+            resourceDocIds.push(course.thumbnailImage._id);
+        }
+
+        // Module/Lesson Resources
+        course.modules?.forEach(module => {
+            module.lessons?.forEach(lesson => {
+                lesson.resources?.forEach(resource => {
+                    if (resource.publicId) {
+                        cloudinaryPublicIds.push({ id: resource.publicId, type: "raw" }); // Resources are usually 'raw'
+                        resourceDocIds.push(resource._id);
+                    }
+                });
+            });
+        });
+
+        // 2. Delete from Cloudinary
+        for (const { id, type } of cloudinaryPublicIds) {
+            console.log(`Deleting ${type} resource ${id} from Cloudinary...`);
+            await deleteFromCloudinary(id, type);
+        }
+
+        // 3. Collect and delete videos from Bunny.net
+        const bunnyVideoIds = [];
+        course.modules?.forEach(module => {
+            module.lessons?.forEach(lesson => {
+                if (lesson.videoId) {
+                    bunnyVideoIds.push(lesson.videoId);
+                }
+            });
+        });
+
+        for (const videoId of bunnyVideoIds) {
+            try {
+                console.log(`Deleting video ${videoId} from Bunny.net...`);
+                await axios.delete(
+                    `https://video.bunnycdn.com/library/${BUNNY_LIBRARY_ID}/videos/${videoId}`,
+                    {
+                        headers: {
+                            AccessKey: BUNNY_API_KEY,
+                        },
+                    }
+                );
+            } catch (bunnyErr) {
+                console.error(`Failed to delete video ${videoId} from Bunny.net:`, bunnyErr.response?.data || bunnyErr.message);
+                // Continue with other deletions even if one fails
+            }
+        }
+
+        // 4. Delete Resource documents from DB
+        if (resourceDocIds.length > 0) {
+            await Resource.deleteMany({ _id: { $in: resourceDocIds } });
+        }
+
+        // 5. Finally delete the Course from DB
+        await Course.findByIdAndDelete(id);
+
+        res.status(200).json({
+            success: true,
+            message: "Course and all associated resources/videos deleted successfully"
+        });
+
+    } catch (error) {
+        console.error("Error deleting course:", error);
+        res.status(500).json({ success: false, message: "Server error deleting course" });
+    }
+};

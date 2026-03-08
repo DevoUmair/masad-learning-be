@@ -16,6 +16,9 @@ import categoryRoutes from "./routes/category.route.js";
 import studentRoutes from "./routes/student.route.js";
 import ratingRoutes from "./routes/rating.route.js";
 import libraryRoutes from "./routes/library.routes.js";
+import instructorRoutes from "./routes/instructor.route.js";
+import certificateRoutes from "./routes/certificate.route.js";
+import adminRoutes from "./routes/admin.route.js";
 
 const app = express();
 
@@ -30,6 +33,9 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/ratings', ratingRoutes);
 app.use('/api/library', libraryRoutes);
+app.use('/api/instructor', instructorRoutes);
+app.use('/api/certificates', certificateRoutes);
+app.use('/api/admin', adminRoutes);
 
 
 

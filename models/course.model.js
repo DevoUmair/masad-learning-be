@@ -8,7 +8,7 @@ const LessonSchema = new mongoose.Schema({
   videoId: {
     type: String,
   },
-  lessonDuration: Number, //minuts
+  lessonDuration: Number,
   libraryId: {
     type: String
   },
@@ -24,7 +24,7 @@ const LessonSchema = new mongoose.Schema({
 const ModuleSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: String,
-  moduleDuration: Number, //minuts
+  moduleDuration: Number,
   lessons: [LessonSchema]
 });
 
