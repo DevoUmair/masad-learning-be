@@ -2,6 +2,8 @@ import User from "../models/user.model.js";
 import Course from "../models/course.model.js";
 import Progress from "../models/progress.model.js";
 import Certificate from "../models/certificate.model.js";
+import { sendEnrollmentEmail } from "../utils/emailTemplates/enrollment.js";
+import { sendCertificateEmail } from "../utils/emailTemplates/certificate.js";
 
 export const enrollCourse = async (req, res) => {
     try {
@@ -41,6 +43,10 @@ export const enrollCourse = async (req, res) => {
             course: courseId
         });
         await newProgress.save();
+
+        // Send Enrollment Email (non-blocking)
+        sendEnrollmentEmail(req.user.email, req.user.name, course.title, course.price)
+            .catch(err => console.error("Enrollment Email Error:", err));
 
         res.status(200).json({ success: true, message: "Course enrolled successfully" });
     } catch (error) {
@@ -140,6 +146,10 @@ export const updateProgress = async (req, res) => {
                         issueDate: Date.now()
                     });
                     await certificate.save();
+
+                    // Send Certificate Email (non-blocking)
+                    sendCertificateEmail(req.user.email, req.user.name, course.title)
+                        .catch(err => console.error("Certificate Email Error:", err));
                 }
             }
 

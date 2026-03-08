@@ -2,6 +2,7 @@ import User from '../models/user.model.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { generateTokens, setRefreshTokenCookie } from '../utils/AuthUtils.js';
+import { sendWelcomeEmail } from '../utils/emailTemplates/registration.js';
 
 export const register = async (req, res) => {
     try {
@@ -37,7 +38,9 @@ export const register = async (req, res) => {
 
         setRefreshTokenCookie(res, refreshToken);
 
-        // Modified: Send accessToken to the client in the JSON body
+        // Send Welcome Email (non-blocking)
+        sendWelcomeEmail(user.email, user.name).catch(err => console.error("Welcome Email Error:", err));
+
         res.status(201).json({
             message: "User registered successfully",
             accessToken,

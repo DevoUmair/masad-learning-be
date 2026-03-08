@@ -388,31 +388,31 @@ export const deleteCourse = async (req, res) => {
         }
 
         // 3. Collect and delete videos from Bunny.net
-        const bunnyVideoIds = [];
-        course.modules?.forEach(module => {
-            module.lessons?.forEach(lesson => {
-                if (lesson.videoId) {
-                    bunnyVideoIds.push(lesson.videoId);
-                }
-            });
-        });
+        // const bunnyVideoIds = [];
+        // course.modules?.forEach(module => {
+        //     module.lessons?.forEach(lesson => {
+        //         if (lesson.videoId) {
+        //             bunnyVideoIds.push(lesson.videoId);
+        //         }
+        //     });
+        // });
 
-        for (const videoId of bunnyVideoIds) {
-            try {
-                console.log(`Deleting video ${videoId} from Bunny.net...`);
-                await axios.delete(
-                    `https://video.bunnycdn.com/library/${BUNNY_LIBRARY_ID}/videos/${videoId}`,
-                    {
-                        headers: {
-                            AccessKey: BUNNY_API_KEY,
-                        },
-                    }
-                );
-            } catch (bunnyErr) {
-                console.error(`Failed to delete video ${videoId} from Bunny.net:`, bunnyErr.response?.data || bunnyErr.message);
-                // Continue with other deletions even if one fails
-            }
-        }
+        // for (const videoId of bunnyVideoIds) {
+        //     try {
+        //         console.log(`Deleting video ${videoId} from Bunny.net...`);
+        //         await axios.delete(
+        //             `https://video.bunnycdn.com/library/${BUNNY_LIBRARY_ID}/videos/${videoId}`,
+        //             {
+        //                 headers: {
+        //                     AccessKey: BUNNY_API_KEY,
+        //                 },
+        //             }
+        //         );
+        //     } catch (bunnyErr) {
+        //         console.error(`Failed to delete video ${videoId} from Bunny.net:`, bunnyErr.response?.data || bunnyErr.message);
+        //         // Continue with other deletions even if one fails
+        //     }
+        // }
 
         // 4. Delete Resource documents from DB
         if (resourceDocIds.length > 0) {
