@@ -187,7 +187,7 @@ export const getMe = async (req, res) => {
 export const getAllUsers = async (req, res) => {
     const { role } = req.query;
     try {
-        const users = await User.find({ role });
+        const users = await User.find({ role }).populate('enrolledCourses', 'title');
         res.status(200).json(users);
     } catch (error) {
         console.error("Get All Users Error:", error);

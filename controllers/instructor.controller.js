@@ -125,6 +125,7 @@ export const getInstructorStats = async (req, res) => {
 
         const courses = await Course.find({ instructor: instructorId })
             .populate("category", "name")
+            .populate("thumbnailImage", "url")
             .sort({ updatedAt: -1 });
 
         const courseIds = courses.map(course => course._id);
@@ -135,7 +136,7 @@ export const getInstructorStats = async (req, res) => {
         const stats = {
             totalStudents: uniqueStudents.length,
             totalEarnings: instructor.instructorProfile.totalEarnings || 0,
-            averageRating: instructor.instructorProfile.instructorRating || 0,
+            averageRating: instructor.instructorProfile.averageRating || 0,
             courses: courses.map(course => ({
                 id: course._id,
                 title: course.title,
@@ -168,6 +169,7 @@ export const getInstructorProfileForAdmin = async (req, res) => {
 
         const courses = await Course.find({ instructor: id })
             .populate("category", "name")
+            .populate("thumbnailImage", "url")
             .sort({ updatedAt: -1 });
 
         const courseIds = courses.map(course => course._id);
@@ -196,13 +198,13 @@ export const getInstructorProfileForAdmin = async (req, res) => {
                 pendingPayout: instructor.instructorProfile?.pendingPayout || 0,
                 students: uniqueStudentsCount,
                 courses: courses.length,
-                rating: instructor.instructorProfile?.instructorRating || 0
+                rating: instructor.instructorProfile?.averageRating || 0
             },
             pendingAmount: instructor.instructorProfile?.pendingPayout || 0,
             courses: courses.map(course => ({
                 id: course._id,
                 title: course.title,
-                thumbnail: course.thumbnail || "/course-placeholder.jpg",
+                thumbnail: course.thumbnailImage?.url || "/course-placeholder.jpg",
                 students: course.totalStudents || 0,
                 rating: course.averageRating || 0,
                 price: `AED ${course.price}`,

@@ -7,6 +7,10 @@ import { sendEnrollmentEmail } from "../utils/emailTemplates/enrollment.js";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
+const WEBHOOK_SECRET = "whsec_tvDrz04YcxKalm0wm1F8EotDucg5qwll";
+
+
+
 export const createCheckoutSession = async (req, res) => {
     try {
         const { courseId } = req.body;
@@ -25,7 +29,7 @@ export const createCheckoutSession = async (req, res) => {
             line_items: [
                 {
                     price_data: {
-                        currency: "usd",
+                        currency: "aed",
                         product_data: {
                             name: course.title,
                             description: course.description || "Course enrollment",
@@ -38,7 +42,7 @@ export const createCheckoutSession = async (req, res) => {
             mode: "payment",
             allow_promotion_codes: true, // ENABLES STRIPE PROMO CODES ON CHECKOUT PAGE
             success_url: `${process.env.CLIENT_URL}/success?course_id=${course._id}`,
-            cancel_url: `${process.env.CLIENT_URL}/course/${course._id}`,
+            cancel_url: `${process.env.CLIENT_URL}/courses/${course._id}`,
             metadata: {
                 courseId: course._id.toString(),
                 userId: userId.toString(),
@@ -58,7 +62,7 @@ export const stripeWebhook = async (req, res) => {
     let event;
 
     try {
-        event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+        event = stripe.webhooks.constructEvent(req.body, sig, WEBHOOK_SECRET);
     } catch (err) {
         console.error("Webhook signature verification failed.", err.message);
         return res.status(400).send(`Webhook Error: ${err.message}`);
@@ -68,9 +72,6 @@ export const stripeWebhook = async (req, res) => {
         const session = event.data.object;
         const { courseId, userId, instructorId } = session.metadata;
 
-        console.log("Stripe Webhook checkout.session.completed received!", session.id);
-        console.log("Metadata:", session.metadata);
-
         try {
             const user = await User.findById(userId);
             const course = await Course.findById(courseId);
@@ -79,10 +80,8 @@ export const stripeWebhook = async (req, res) => {
             console.log("Found Course Context:", course ? "YES (ID: " + course._id + ")" : "NO");
 
             const isAlreadyEnrolled = user && user.enrolledCourses.includes(courseId);
-            console.log("Is Already Enrolled?", isAlreadyEnrolled);
 
             if (user && course && !isAlreadyEnrolled) {
-                console.log("Proceeding with enrollment logic...");
 
                 // 1. Enroll User
                 user.enrolledCourses.push(courseId);
