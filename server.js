@@ -19,10 +19,12 @@ import libraryRoutes from "./routes/library.routes.js";
 import instructorRoutes from "./routes/instructor.route.js";
 import certificateRoutes from "./routes/certificate.route.js";
 import adminRoutes from "./routes/admin.route.js";
+import stripeRoutes from "./routes/stripe.route.js";
 
 const app = express();
 
 app.use(cors({ origin: ["http://localhost:3000"], credentials: true }));
+app.use("/api/payments/webhook", express.raw({ type: "application/json" }));
 app.use(express.json({ limit: "10mb" }));
 app.use(cookieParser());
 
@@ -36,6 +38,7 @@ app.use('/api/library', libraryRoutes);
 app.use('/api/instructor', instructorRoutes);
 app.use('/api/certificates', certificateRoutes);
 app.use('/api/admin', adminRoutes);
+app.use("/api/payments", stripeRoutes);
 
 
 

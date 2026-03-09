@@ -1,6 +1,9 @@
 import Transaction from "../models/transaction.js";
 import Course from "../models/course.model.js";
 import User from "../models/user.model.js";
+import Stripe from "stripe";
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 export const getAdminStats = async (req, res) => {
     try {
@@ -112,5 +115,51 @@ export const getAdminStats = async (req, res) => {
     } catch (error) {
         console.error("Error fetching admin stats:", error);
         res.status(500).json({ message: "Internal Server Error" });
+    }
+};
+
+
+
+export const createStripePromo = async (req, res) => {
+    try {
+        // Ensure only admins can access this (usually done via middleware)
+        if (req.user.role !== "admin") {
+            return res.status(403).json({ message: "Not authorized" });
+        }
+
+        const { codeName, percentOff, expiryDate } = req.body;
+
+        if (!codeName || !percentOff) {
+            return res.status(400).json({ message: "Code name and discount percentage required." });
+        }
+
+        // 1. Create Coupon (The math rule)
+        const coupon = await stripe.coupons.create({
+            percent_off: percentOff,
+            duration: 'once',
+        });
+
+        // 2. Create Promotion Code (What the user types)
+        const promoCodeParams = {
+            coupon: coupon.id,
+            code: codeName.toUpperCase(),
+            active: true,
+        };
+
+        if (expiryDate) {
+            const expiresAtTimestamp = Math.floor(new Date(expiryDate).getTime() / 1000);
+            if (expiresAtTimestamp <= Math.floor(Date.now() / 1000)) {
+                return res.status(400).json({ message: "Expiry date must be in the future." });
+            }
+            promoCodeParams.expires_at = expiresAtTimestamp;
+        }
+
+        const promotionCode = await stripe.promotionCodes.create(promoCodeParams);
+
+        res.status(201).json({ success: true, promoCode: promotionCode.code });
+
+    } catch (error) {
+        console.error("Error creating Stripe promo:", error);
+        res.status(500).json({ message: error.message });
     }
 };

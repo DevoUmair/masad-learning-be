@@ -23,6 +23,10 @@ export const enrollCourse = async (req, res) => {
             return res.status(404).json({ message: "Course not found" });
         }
 
+        if (course.price > 0) {
+            return res.status(400).json({ message: "This course requires payment. Please use checkout." });
+        }
+
         // Add course to student's enrolled courses
         user.enrolledCourses.push(courseId);
         await user.save();
