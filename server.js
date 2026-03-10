@@ -21,6 +21,8 @@ import certificateRoutes from "./routes/certificate.route.js";
 import adminRoutes from "./routes/admin.route.js";
 import stripeRoutes from "./routes/stripe.route.js";
 import transactionRoutes from "./routes/transaction.route.js";
+import promo from "./routes/promo.route.js";
+
 
 const app = express();
 
@@ -43,6 +45,8 @@ app.use('/api/certificates', certificateRoutes);
 app.use('/api/admin', adminRoutes);
 app.use("/api/payments", stripeRoutes);
 app.use("/api/transactions", transactionRoutes);
+app.use("/api/promo", promo);
+
 
 
 

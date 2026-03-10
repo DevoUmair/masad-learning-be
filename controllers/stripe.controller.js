@@ -3,6 +3,7 @@ import User from '../models/user.model.js';
 import Course from "../models/course.model.js";
 import Transaction from "../models/transaction.js";
 import Progress from "../models/progress.model.js";
+import Promo from "../models/promo.model.js";
 import { sendEnrollmentEmail } from "../utils/emailTemplates/enrollment.js";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -119,7 +120,33 @@ export const stripeWebhook = async (req, res) => {
                 });
                 await newProgress.save();
 
-                // 6. Send Enrollment Email (non-blocking)
+                // 6. Track Promo Code Usage if Applicable
+                if (session.total_details && session.total_details.amount_discount > 0) {
+                    try {
+                        const expandedSession = await stripe.checkout.sessions.retrieve(session.id, {
+                            expand: ['total_details.breakdown']
+                        });
+
+                        if (expandedSession?.total_details?.breakdown?.discounts) {
+                            for (let disc of expandedSession.total_details.breakdown.discounts) {
+                                // Extract the string ID of the promotion code applied
+                                const promoCodeId = disc.discount?.promotion_code;
+                                if (promoCodeId) {
+                                    const promoCodeIdString = typeof promoCodeId === 'string' ? promoCodeId : promoCodeId.id;
+                                    await Promo.findOneAndUpdate(
+                                        { stripePromoId: promoCodeIdString },
+                                        { $inc: { currentRedemptions: 1 } }
+                                    );
+                                    console.log(`Promo ${promoCodeIdString} redemption incremented locally.`);
+                                }
+                            }
+                        }
+                    } catch (promoErr) {
+                        console.error("Failed to track local promo redemptions:", promoErr);
+                    }
+                }
+
+                // 7. Send Enrollment Email (non-blocking)
                 sendEnrollmentEmail(user.email, user.name, course.title, session.amount_total / 100)
                     .catch(err => console.error("Enrollment Email Error:", err));
 

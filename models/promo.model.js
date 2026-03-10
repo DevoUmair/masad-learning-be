@@ -26,6 +26,18 @@ const PromoSchema = new mongoose.Schema(
             type: Date,
             required: true
         },
+        maxRedemptions: {
+            type: Number,
+            default: null
+        },
+        currentRedemptions: {
+            type: Number,
+            default: 0
+        },
+        stripePromoId: {
+            type: String,
+            required: true
+        },
 
     },
     { timestamps: true }
