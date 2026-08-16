@@ -8,7 +8,7 @@ import { sendEnrollmentEmail } from "../utils/emailTemplates/enrollment.js";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-const WEBHOOK_SECRET = "whsec_tvDrz04YcxKalm0wm1F8EotDucg5qwll";
+const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 
 
 
@@ -50,7 +50,7 @@ export const createCheckoutSession = async (req, res) => {
                 instructorId: course.instructor.toString(),
             },
         });
-
+        console.log("Created Stripe Checkout Session:", session);
         res.status(200).json({ url: session.url });
     } catch (error) {
         console.error("Error creating checkout session:", error);
@@ -61,7 +61,7 @@ export const createCheckoutSession = async (req, res) => {
 export const stripeWebhook = async (req, res) => {
     const sig = req.headers['stripe-signature'];
     let event;
-
+    console.log("Received Stripe Webhook Event:", req.body);
     try {
         event = stripe.webhooks.constructEvent(req.body, sig, WEBHOOK_SECRET);
     } catch (err) {
