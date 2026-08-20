@@ -26,7 +26,14 @@ import promo from "./routes/promo.route.js";
 
 const app = express();
 
-app.use(cors({ origin: ["http://localhost:3000"], credentials: true }));
+app.use(cors({ 
+  origin: [
+    "http://localhost:3000", 
+    "https://masadlearning.com",
+    "https://www.masadlearning.com"
+  ], 
+  credentials: true 
+}));
 app.use("/api/payments/webhook", express.raw({ type: "application/json" }));
 
 app.use(express.json({ limit: "10mb" }));
